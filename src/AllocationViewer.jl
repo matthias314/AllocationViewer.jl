@@ -24,15 +24,18 @@ end
 
 @struct_equal_hash Source
 
-const pkgcolors = Iterators.Stateful(Iterators.cycle([:blue, :cyan, :green]))
-const pkgcolorcache = Dict{String, Any}("@julialib" => :gray, "@juliasrc" => :gray)
+const colors = Iterators.cycle([:blue, :cyan, :green, :red, :magenta])
+
+const pkgcolors = Iterators.Stateful(colors)
+const pkgcolorcache = Dict{String, Any}("@julialib" => :shadow, "@juliasrc" => :shadow,
+    "@Compiler" => :warning, string('@', @__MODULE__) => :error)
 
 function coloredpkg(pkgname::String)
     color = get!(() -> popfirst!(pkgcolors), pkgcolorcache, pkgname)
     styled"{$color:$pkgname}"
 end
 
-const typecolors = Iterators.Stateful(Iterators.cycle([:red, :magenta, :yellow]))
+const typecolors = Iterators.Stateful(colors)
 const typecolorcache = Dict{Type, Any}()
 
 function coloredtype(::Type{T}) where T
@@ -194,7 +197,7 @@ function allocs_menu(sffilter::SF, res = Allocs.fetch()) where SF
     end
     header = styled"$fc allocs: $fb bytes at $(length(agroups)) source locations"
     if sc > 0
-        header *= styled" {gray:(ignoring $sc allocs: $sb bytes)}"
+        header *= styled" {shadow:(ignoring $sc allocs: $sb bytes)}"
     end
     root.data = Colored(header)
     TreeMenu(root; pagesize = displaysize()[1], dynamic = true, keypress)
