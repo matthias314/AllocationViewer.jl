@@ -12,7 +12,7 @@ using Profile.Allocs: Allocs, Alloc
 using REPL.TerminalMenus: request
 using StyledStrings
 
-using FoldingTrees: TreeMenu, Node, fold!, setcurrent!
+using FoldingTrees: TreeMenu, Node, fold!, setcurrent!, count_open_leaves
 import FoldingTrees: writeoption
 
 using StructEqualHash
@@ -158,6 +158,7 @@ function allocs_menu(sffilter::SF, res = Allocs.fetch()) where SF
         elseif i == Int('R') && data isa Alloc
             addframes!(Returns(true), node)
         end
+        menu.pagesize = min(menu.maxsize, count_open_leaves(menu.root))
         false
     end
 
