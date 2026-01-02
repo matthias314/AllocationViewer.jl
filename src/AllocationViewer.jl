@@ -2,6 +2,7 @@ module AllocationViewer
 
 export @track_allocs, @framefilter
 
+using Base: Fix1
 using Base.Filesystem: basename
 using Base.Meta: isexpr
 using Base.StackTraces: StackFrame
@@ -72,24 +73,29 @@ function writeoption(io::IO, sf::StackFrame, charsused::Int)
 end
 
 framefilter(f) = f
-framefilter(::Nothing) = sf -> !(modstr(sf.file) in ("", "@julialib", "@juliasrc"))
-framefilter(n::Integer) = sf -> sf.line == n
-framefilter(c::Union{AbstractVector{<:Integer}, AbstractSet{<:Integer}}) = sf -> sf.line in c
-framefilter(s::Symbol) = sf -> sf.func == s
-framefilter(r::Regex) = sf -> match(r, String(sf.file)) !== nothing
+framefilter(::Nothing) = (a, sf) -> !(modstr(sf.file) in ("", "@julialib", "@juliasrc"))
+framefilter(s::Symbol) = (a, sf) -> sf.func == s
+framefilter(::Type{T}) where T = (a, sf) -> framefilter(nothing)(a, sf) && a.type <: T
+framefilter(r::Regex) = (a, sf) -> match(r, String(sf.file)) !== nothing
 
 function framefilter(s::AbstractString)
     if s == "@"
-        sf -> !(modstr(sf.file) in ("", "@julialib", "@juliasrc", "@Base"))
+        (a, sf) -> !(modstr(sf.file) in ("", "@julialib", "@juliasrc", "@Base"))
     elseif s[1] == '@'
-        sf -> modstr(sf.file) == s
+        (a, sf) -> modstr(sf.file) == s
     else
-        sf -> basename(String(sf.file)) == s
+        (a, sf) -> basename(String(sf.file)) == s
     end
 end
 
-framefilter(x, y) = sf -> framefilter(y)(sf) && framefilter(x)(sf)
-framefilter(i::Integer, j::Integer) = framefilter(i:j)
+function framefilter(::Type{T}, c::Union{Integer, AbstractVector{<:Integer}, AbstractSet{<:Integer}}) where T
+    (a, sf) -> framefilter(T)(a, sf) && a.size in c
+end
+
+function framefilter(s::Union{AbstractString, Regex}, c::Union{Integer, AbstractVector{<:Integer}, AbstractSet{<:Integer}})
+    (a, sf) -> framefilter(s)(a, sf) && sf.line in c
+end
+
 framefilter(x, i::Integer, j::Integer) = framefilter(x, i:j)
 
 const bottomfilter = framefilter(string('@', @__MODULE__))
@@ -97,10 +103,10 @@ const bottomfilter = framefilter(string('@', @__MODULE__))
 function parsefilter(ex)
     if isexpr(ex, :||)
         parsedargs = map(parsefilter, ex.args)
-        :(sf -> any(f -> f(sf), [$(parsedargs...)] ))
+        :((a, sf) -> any(f -> f(a, sf), [$(parsedargs...)] ))
     elseif isexpr(ex, :&&)
         parsedargs = map(parsefilter, ex.args)
-        :(sf -> all(f -> f(sf), [$(parsedargs...)] ))
+        :((a, sf) -> all(f -> f(a, sf), [$(parsedargs...)] ))
     elseif isexpr(ex, :call, 2) && ex.args[1] == :!
         Expr(:call, :!, parsefilter(ex.args[2]))
     elseif isexpr(ex, :call) && ex.args[1] == :(:)
@@ -117,10 +123,10 @@ end
 function addframes!(sffilter::SF, alloc_node) where SF
     a::Alloc = alloc_node.data
     empty!(alloc_node.children)
-    i = findfirst(sffilter, a.stacktrace)::Int
+    i = findfirst(Fix1(sffilter, a), a.stacktrace)::Int
     j = if sffilter != Returns(true)
-        # findnext(sf -> sf.line == -1 || bottomfilter(sf), a.stacktrace, i)
-        findnext(bottomfilter, a.stacktrace, i)::Int
+        # findnext((a, sf) -> sf.line == -1 || bottomfilter(a, sf), a.stacktrace, i)
+        findnext(Fix1(bottomfilter, a), a.stacktrace, i)::Int
     else
         length(a.stacktrace)+1
     end
@@ -156,8 +162,8 @@ function allocs_menu(sffilter::SF, res = Allocs.fetch()) where SF
     agroups = Dict{Source,Vector{Alloc}}()
     sc = sb = 0
     for a in allocs
-        i = findfirst(sffilter, a.stacktrace)
-        if i !== nothing && bottomfilter(a.stacktrace[i])
+        i = findfirst(Fix1(sffilter, a), a.stacktrace)
+        if i !== nothing && bottomfilter(a, a.stacktrace[i])
             i = nothing
         end
         if i !== nothing
