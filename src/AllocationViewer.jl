@@ -136,6 +136,12 @@ function addframes!(sffilter::SF, alloc_node) where SF
     foreach(sf -> Node(sf, alloc_node), @view a.stacktrace[i:j-1])
 end
 
+if VERSION >= v"1.13-"
+    lastcmd() = Base.active_repl.mistate.current_mode.hist.history[end].content
+else
+    lastcmd() = Base.active_repl.mistate.current_mode.hist.history[end]
+end
+
 function allocs_menu(sffilter::SF, res = Allocs.fetch()) where SF
 
     function keypress(menu::TreeMenu, i::UInt32)
@@ -201,7 +207,10 @@ function allocs_menu(sffilter::SF, res = Allocs.fetch()) where SF
         header *= styled" {shadow:(ignoring $sc allocs: $sb bytes)}"
     end
     root.data = Colored(header)
-    TreeMenu(root; pagesize = displaysize()[1], dynamic = true, keypress)
+    height, _ = displaysize(stdout)
+    cmdlines = countlines(IOBuffer(lastcmd()))
+    pagesize = max(height-cmdlines, trunc(Int, 0.75*height))
+    TreeMenu(root; pagesize, dynamic = true, keypress)
 end
 
 macro track_allocs(ex, sffilterex = nothing)
