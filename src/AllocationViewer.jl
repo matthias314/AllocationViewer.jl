@@ -156,7 +156,7 @@ function allocs_menu(sffilter::SF, res = Allocs.fetch()) where SF
                 data = first(data)
             end
             @assert data isa Union{Source, StackFrame}
-            edit(fullpath(data.file), data.line)
+            data.line > 0 && edit(fullpath(data.file), data.line)
         elseif i == Int('f') && data isa Alloc
             addframes!(sffilter, node)
         elseif i == Int('r') && data isa Alloc
