@@ -111,7 +111,7 @@ function parsefilter(ex)
         parsedargs = map(parsefilter, ex.args)
         :((a, sf) -> all(f -> f(a, sf), [$(parsedargs...)] ))
     elseif isexpr(ex, :call, 2) && ex.args[1] == :!
-        Expr(:call, :!, parsefilter(ex.args[2]))
+        :((a, sf) -> framefilter(nothing)(a, sf) && !$(parsefilter(ex.args[2]))(a, sf))
     elseif isexpr(ex, :call) && ex.args[1] == :(:)
         Expr(:call, framefilter, esc.(ex.args[2:end])...)
     else
