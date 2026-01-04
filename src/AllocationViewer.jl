@@ -6,9 +6,9 @@ using Base: Fix1
 using Base.Filesystem: basename
 using Base.Meta: isexpr
 using Base.StackTraces: StackFrame
-using InteractiveUtils: edit, @which
+using InteractiveUtils: edit
 using Profile: short_path
-using Profile.Allocs: Allocs, Alloc
+using Profile.Allocs: Allocs, Alloc, AllocResults
 using REPL.TerminalMenus: request
 using StyledStrings
 
@@ -128,7 +128,6 @@ function addframes!(sffilter::SF, alloc_node) where SF
     empty!(alloc_node.children)
     i = findfirst(Fix1(sffilter, a), a.stacktrace)::Int
     j = if sffilter != Returns(true)
-        # findnext((a, sf) -> sf.line == -1 || bottomfilter(a, sf), a.stacktrace, i)
         findnext(Fix1(bottomfilter, a), a.stacktrace, i)::Int
     else
         length(a.stacktrace)+1
@@ -142,8 +141,8 @@ else
     lastcmd() = Base.active_repl.mistate.current_mode.hist.history[end]
 end
 
-function allocs_menu(sffilter::SF, res = Allocs.fetch();
-    pagesize = begin
+function allocs_menu(sffilter::SF, res::AllocResults = Allocs.fetch();
+    pagesize::Int = begin
         height, _ = displaysize(stdout)
         cmdlines = countlines(IOBuffer(lastcmd()))
         max(height-cmdlines, trunc(Int, 0.75*height))
@@ -234,7 +233,7 @@ macro track_allocs(exs...)
     end
 
     if length(exs) in (1, 2)
-        ex, sffilterex = exs..., nothing
+        prof_ex, filter_ex = exs..., nothing
     else
         throw(ArgumentError("wrong number of arguments"))
     end
@@ -253,17 +252,15 @@ macro track_allocs(exs...)
         end
     end
 
-    sffilter = parsefilter(sffilterex)
+    filter = parsefilter(filter_ex)
     body = quote
-        f() = ($(esc(traverse(ex))); nothing)
+        f() = ($(esc(traverse(prof_ex))); nothing)
         # warming up f and profiling code
         $warmup_ex ? f() : precompile(f, ())
         Allocs.@profile $(esc(:sample_rate)) = 1.0 nothing
         Allocs.clear()
-        # @info "profiling start"
         Allocs.@profile $(esc(sample_ex)) f()
-        # @info "profiling stop"
-        request(allocs_menu($sffilter; $(esc(pagesize_ex))...); cursor = 2)
+        request(allocs_menu($filter; $(esc(pagesize_ex))...); cursor = 2)
         nothing
     end
     Expr(:let, vars, body)
