@@ -142,7 +142,12 @@ else
     lastcmd() = Base.active_repl.mistate.current_mode.hist.history[end]
 end
 
-function allocs_menu(sffilter::SF, res = Allocs.fetch()) where SF
+function allocs_menu(sffilter::SF, res = Allocs.fetch();
+    pagesize = begin
+        height, _ = displaysize(stdout)
+        cmdlines = countlines(IOBuffer(lastcmd()))
+        max(height-cmdlines, trunc(Int, 0.75*height))
+    end) where SF
 
     function keypress(menu::TreeMenu, i::UInt32)
         setcurrent!(menu, menu.cursoridx)
@@ -207,13 +212,33 @@ function allocs_menu(sffilter::SF, res = Allocs.fetch()) where SF
         header *= styled" {shadow:(ignoring $sc allocs: $sb bytes)}"
     end
     root.data = Colored(header)
-    height, _ = displaysize(stdout)
-    cmdlines = countlines(IOBuffer(lastcmd()))
-    pagesize = max(height-cmdlines, trunc(Int, 0.75*height))
     TreeMenu(root; pagesize, dynamic = true, keypress)
 end
 
-macro track_allocs(ex, sffilterex = nothing)
+macro track_allocs(exs...)
+    sample_ex = :(sample_rate = 1.0)
+    pagesize_ex = (;)
+    warmup_ex = true
+
+    while !isempty(exs) && isexpr(exs[1], :(=))
+        ex, exs... = exs
+        if ex.args[1] == :sample_rate
+            sample_ex = ex
+        elseif ex.args[1] == :pagesize
+            pagesize_ex = :( (; $ex) )
+        elseif ex.args[1] == :warmup
+            warmup_ex = esc(ex.args[2])
+        else
+            throw(ArgumentError("unknown keyword argument `$(ex.args[1])`"))
+        end
+    end
+
+    if length(exs) in (1, 2)
+        ex, sffilterex = exs..., nothing
+    else
+        throw(ArgumentError("wrong number of arguments"))
+    end
+
     vars = Expr(:block)
 
     function traverse(ex)
@@ -232,13 +257,13 @@ macro track_allocs(ex, sffilterex = nothing)
     body = quote
         f() = ($(esc(traverse(ex))); nothing)
         # warming up f and profiling code
-        f() # precompile(f, ())
+        $warmup_ex ? f() : precompile(f, ())
         Allocs.@profile $(esc(:sample_rate)) = 1.0 nothing
         Allocs.clear()
         # @info "profiling start"
-        Allocs.@profile $(esc(:sample_rate)) = 1.0 f()
+        Allocs.@profile $(esc(sample_ex)) f()
         # @info "profiling stop"
-        request(allocs_menu($sffilter); cursor = 2)
+        request(allocs_menu($sffilter; $(esc(pagesize_ex))...); cursor = 2)
         nothing
     end
     Expr(:let, vars, body)
