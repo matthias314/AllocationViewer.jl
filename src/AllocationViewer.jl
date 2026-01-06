@@ -1,3 +1,10 @@
+"""
+    $(@__MODULE__)
+
+A lightweight package to track allocations and display them in a foldable menu.
+
+See [`@framefilter`](@ref), [`@track_allocs`](@ref).
+"""
 module AllocationViewer
 
 export @track_allocs, @framefilter
@@ -119,6 +126,54 @@ function parsefilter(ex)
     end
 end
 
+"""
+    @framefilter expr
+
+Returns a function that filters stack frames according to the conditions given by `expr`.
+
+The syntax for filters is as follows:
+- A type is matched against the type of the allocation.
+- If `T` is a type and `n` an integer, then `T:n` matches allocations of type `T` and size `n`.
+  Ranges (or other vectors or sets of integers) can likewise be used to select several sizes.
+  Here `T:m:n` is the same as `T:(m:n)`.
+- An `AbstractString` starting with `'@'` is matched against the name of the package containing the stack frame location.
+  The string `"@"` matches all packages outside of `Base`.
+- An `AbstractString` not starting with `'@'` or a `Regex` is matched against the path of the file
+  containing the stack frame location. Strings are only matched against the file name part of the path.
+- If `s` is a string and `n` an integer, then `s:n` matches allocations in line `n` of the file `s`.
+  Ranges (or other vectors or sets of integers) can likewise be used to select several lines.
+  Here `s:m:n` is the same as `s:(m:n)`.
+- A `Symbol` is matched against the name of the function containing the stack frame location.
+- The boolean operators `&&`, `||` and `!` can be used to combine filters.
+
+!!! note
+
+A stack traces matches if any of its frames does. Hence the filter `!"myfile.jl"` does not select
+stack traces that do not pass through `myfile.jl`, but instead those containing a stack frame that does not
+pass through this file. Most likely, this will hold true for all stack frames.
+
+# Examples
+
+All allocations for some type other than `Vector` and that pass through the package `MyPkg`:
+```julia
+@framefilter !Vector && "@MyPkg"
+```
+All allocations that pass through lines 10 to 20 of the file `myfile.jl`:
+```julia
+@framefilter "myfile.jl":10:20
+```
+All allocations that pass through a function `iterate` defined outside of `Base`:
+```julia
+@framefilter :iterate && "@"
+```
+
+# User-defined filters
+
+One can also define custom filters. The signature for such a filter must be
+```
+myfilter(a::Profile.Allocs.Alloc, sf::StackTraces.StackFrame)::Bool
+```
+"""
 macro framefilter(ex)
     parsefilter(ex)
 end
@@ -214,6 +269,33 @@ function allocs_menu(sffilter::SF, res::AllocResults = Allocs.fetch();
     TreeMenu(root; pagesize, dynamic = true, keypress)
 end
 
+"""
+    @track_allocs [warmup = true] [sample_rate = 1.0] [pagesize = n::Int] expr [filter]
+
+Track the allocations during the evaluation of `expr` and display the results as a foldable menu.
+Analogously to benchmark macros, terms in `expr` can be escaped via `\$` to avoid allocations.
+
+If a stack frame filter `filter` is given, only allocations meeting the filter criteria will be displayed.
+See `@framefilter` for the filter syntax. Functions returned by `@framefilter` can also be used for `filter`.
+
+The meaning of `sample_rate` is as in `Profile.Allocs.@profile`, which is called under the hood.
+The default maximal size of the menu can the overriden with `pagesize`.
+If `warmup` is `true`, then `expr` will first be evaluated without tracking allocations. This forces
+the compilation of `expr`. If `warmup` is `false`, then `expr` will only be compiled via `precompile`,
+which may be less effective.
+
+See also [`@framefilter`](@ref), `Profile.Allocs.@profile`, `Base.precompile`.
+
+# Keybindings
+
+- cursor keys: change the selected menu item as for `REPL.TErminalMenus.MultiSelectMenu`
+- space: expands or collapes a submenu
+- `'e'`: opens an editor with the source code line for the selected allocation or stack frame
+- `'f'`: on an allocation: only displays stack frames selected by the filter
+- `'r'`: on an allocation: also displays stack frames from `Base`
+- `'R'`: on an allocation: displays all stack frames
+- `'q'`: quits the menu
+"""
 macro track_allocs(exs...)
     sample_ex = :(sample_rate = 1.0)
     pagesize_ex = (;)
