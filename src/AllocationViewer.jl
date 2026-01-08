@@ -86,6 +86,7 @@ framefilter(f) = f
 framefilter(::Nothing) = (a, sf) -> !(modstr(sf.file) in ("", "@julialib", "@juliasrc"))
 framefilter(s::Symbol) = (a, sf) -> sf.func == s
 framefilter(::Type{T}) where T = (a, sf) -> framefilter(nothing)(a, sf) && a.type <: T
+framefilter(c::Union{Integer, AbstractVector{<:Integer}, AbstractSet{<:Integer}}) = (a, sf) -> a.size in c
 framefilter(r::Regex) = (a, sf) -> match(r, String(sf.file)) !== nothing
 
 function framefilter(s::AbstractString)
@@ -98,14 +99,11 @@ function framefilter(s::AbstractString)
     end
 end
 
-function framefilter(::Type{T}, c::Union{Integer, AbstractVector{<:Integer}, AbstractSet{<:Integer}}) where T
-    (a, sf) -> framefilter(T)(a, sf) && a.size in c
-end
-
 function framefilter(s::Union{AbstractString, Regex}, c::Union{Integer, AbstractVector{<:Integer}, AbstractSet{<:Integer}})
     (a, sf) -> framefilter(s)(a, sf) && sf.line in c
 end
 
+framefilter(i::Integer, j::Integer) = framefilter(i:j)
 framefilter(x, i::Integer, j::Integer) = framefilter(x, i:j)
 
 const bottomfilter = framefilter(string('@', @__MODULE__))
@@ -134,8 +132,8 @@ Returns a function that filters stack frames according to the conditions given b
 The syntax for filters is as follows:
 - A type is matched against the type of the allocation.
 - If `T` is a type and `n` an integer, then `T:n` matches allocations of type `T` and size `n`.
-  Ranges (or other vectors or sets of integers) can likewise be used to select several sizes.
-  Here `T:m:n` is the same as `T:(m:n)`.
+- An integer matches an allocation of that size. Likewise, ranges (or other vectors or sets of integers)
+  match allocations whose size is contained in the given collection.
 - An `AbstractString` starting with `'@'` is matched against the name of the package containing the stack frame location.
   The string `"@"` matches all packages outside of `Base`.
 - An `AbstractString` not starting with `'@'` or a `Regex` is matched against the path of the file
