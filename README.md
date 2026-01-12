@@ -9,19 +9,24 @@ and
 [PProf.jl](https://github.com/JuliaPerf/PProf.jl),
 which install more than 100 MB (ProfileCanvas.jl) or 300 MB (PProf.jl) of software.
 
-Alocations can be filtered by type and size as well as source location (package, file and line number)
-and function name of a stack frame. They are displayed in collapsible menus as provided by
-[FoldingTrees.jl](https://github.com/JuliaCollections/FoldingTrees.jl).
+Allocations can be filtered by type and size as well as source location (package, file and line number)
+and function name of a stack frame. They are displayed in collapsible menus (provided by
+[FoldingTrees.jl](https://github.com/JuliaCollections/FoldingTrees.jl)).
+The top of the menu displays a summary of the allocations matching the given filter criteria and those that don't (if any).
+The first menu level shows the number and total size of the allocations occurring at each source line.
+The next level lists each such allocation together with its size and type.
+The third level shows the stack frames leading up to that source location.
+
 Pressing the space bar on a menu item expands or collapses that item.
 Pressing `'e'` on a line mentioning a source location open an editor at that line;
-`'q'` quits the menu.
+`'q'` or `ENTER` quits the menu.
 
 See the docstrings for `@track_allocs` and `@framefilter` for more details.
 
 ## Example
 
 Here we investigate allocations that happen in `iterate` methods defined
-in the packacke Combinatorics.jl and are not of type `Memory`:
+in the package Combinatorics.jl and that are not of type `Memory`:
 ```
 julia> using AllocationViewer, Combinatorics
 

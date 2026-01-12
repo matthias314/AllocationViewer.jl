@@ -293,7 +293,7 @@ See also [`@framefilter`](@ref), `Profile.Allocs.@profile`, `Base.precompile`.
 - `'f'`: on an allocation: only displays stack frames selected by the filter
 - `'r'`: on an allocation: also displays stack frames from `Base`
 - `'R'`: on an allocation: displays all stack frames
-- `'q'`: quits the menu
+- `'q'` or `Enter`: quits the menu
 """
 macro track_allocs(exs...)
     sample_ex = :(sample_rate = 1.0)
