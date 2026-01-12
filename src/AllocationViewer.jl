@@ -27,6 +27,7 @@ using StructEqualHash
 struct Source
     file::Symbol
     line::Int
+    func::Symbol
 end
 
 @struct_equal_hash Source
@@ -70,7 +71,7 @@ end
 
 function writeoption(io::IO, (agroup, c, b)::Tuple{Source, Int, Int}, charsused::Int)
     ms, rp = modstr(agroup.file), relpath(agroup.file)
-    writeoption(io, Colored(styled"$c allocs: $b bytes at $(coloredpkg(ms))$rp:$(agroup.line)"), charsused)
+    writeoption(io, Colored(styled"$c allocs: $b bytes at $(coloredpkg(ms))$rp:$(agroup.line) $(agroup.func)"), charsused)
 end
 
 function writeoption(io::IO, a::Alloc, charsused::Int)
@@ -235,7 +236,7 @@ function allocs_menu(sffilter::SF, res::AllocResults = Allocs.fetch();
         end
         if i !== nothing
             sf = a.stacktrace[i]
-            agroup = Source(sf.file, sf.line)
+            agroup = Source(sf.file, sf.line, sf.func)
             as = get!(() -> Alloc[], agroups, agroup)
             push!(as, a)
         else

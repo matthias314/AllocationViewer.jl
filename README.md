@@ -27,8 +27,8 @@ julia> using AllocationViewer, Combinatorics
 
 julia> @track_allocs sum(permutations(1:3)) "@Combinatorics" && :iterate && !Memory
      33 allocs: 1296 bytes at 3 source locations (ignoring 39 allocs: 1544 bytes)
-   +  12 allocs: 576 bytes at @Combinatorics/src/permutations.jl:37
-      9 allocs: 336 bytes at @Combinatorics/src/permutations.jl:28
+   +  12 allocs: 576 bytes at @Combinatorics/src/permutations.jl:37 iterate
+      9 allocs: 336 bytes at @Combinatorics/src/permutations.jl:28 iterate
    +   32 bytes for Vector{Int64}
    +   32 bytes for Vector{Int64}
        80 bytes for Dict{Int64, Nothing}
@@ -51,5 +51,5 @@ julia> @track_allocs sum(permutations(1:3)) "@Combinatorics" && :iterate && !Mem
    +   32 bytes for Vector{Int64}
    +   32 bytes for Vector{Int64}
    +   32 bytes for Vector{Int64}
-   +  12 allocs: 384 bytes at @Combinatorics/src/permutations.jl:287
+   +  12 allocs: 384 bytes at @Combinatorics/src/permutations.jl:287 iterate
 ```
