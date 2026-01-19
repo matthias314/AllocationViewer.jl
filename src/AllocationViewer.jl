@@ -260,7 +260,7 @@ function allocs_menu(sffilter::SF, res::AllocResults = Allocs.fetch();
         end
         fold!(agroup_node)
     end
-    header = styled"$fc allocs: $fb bytes at $(length(agroups)) source locations"
+    header = styled"{bold:$fc allocs: $fb bytes at $(length(agroups)) source locations}"
     if sc > 0
         header *= styled" {shadow:(ignoring $sc allocs: $sb bytes)}"
     end
