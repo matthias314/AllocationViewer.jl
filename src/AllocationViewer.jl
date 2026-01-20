@@ -14,7 +14,7 @@ using Base.Filesystem: basename
 using Base.Meta: isexpr
 using Base.StackTraces: StackFrame
 using InteractiveUtils: edit
-using Profile: short_path
+using Profile: slash, short_path
 using Profile.Allocs: Allocs, Alloc, AllocResults
 using REPL.TerminalMenus: request
 using StyledStrings
@@ -58,7 +58,7 @@ modstr(file::Symbol) = short_path(file, fncache)[2]
 
 function relpath(file::Symbol)
     _, ms, rp = short_path(file, fncache)
-    ms in ("@Base", "@Compiler") ? '/' * rp : rp
+    ms in ("@Base", "@Compiler") ? slash * rp : rp
 end
 
 struct Colored
