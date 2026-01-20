@@ -1,12 +1,19 @@
 using Test
 
 using AllocationViewer
-using Profile.Allocs
+using Profile: Allocs, slash
 using REPL.TerminalMenus: AbstractMenu, printmenu
 
 @testset "filter" begin
     @test (@framefilter "@Test" && :iterate && !32) isa Function
     @test (@framefilter "runtests.jl":12:18 || Vector) isa Function
+end
+
+@testset "paths" begin
+    file = Symbol(pathof(AllocationViewer))
+    @test AllocationViewer.fullpath(file) == pathof(AllocationViewer)
+    @test AllocationViewer.modstr(file) == "@AllocationViewer"
+    @test AllocationViewer.relpath(file) == slash * joinpath("src", "AllocationViewer.jl")
 end
 
 @testset "allocs_menu" begin
