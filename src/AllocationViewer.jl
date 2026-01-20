@@ -198,7 +198,7 @@ end
 function allocs_menu(sffilter::SF, res::AllocResults = Allocs.fetch();
     pagesize::Int = begin
         height, _ = displaysize(stdout)
-        cmdlines = countlines(IOBuffer(lastcmd()))
+        cmdlines = isinteractive() ? countlines(IOBuffer(lastcmd())) : 0
         max(height-cmdlines, trunc(Int, 0.75*height))
     end) where SF
 
