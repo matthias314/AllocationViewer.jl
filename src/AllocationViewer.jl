@@ -132,7 +132,6 @@ Returns a function that filters stack frames according to the conditions given b
 
 The syntax for filters is as follows:
 - A type is matched against the type of the allocation.
-- If `T` is a type and `n` an integer, then `T:n` matches allocations of type `T` and size `n`.
 - An integer matches an allocation of that size. Likewise, ranges (or other vectors or sets of integers)
   match allocations whose size is contained in the given collection.
 - An `AbstractString` starting with `'@'` is matched against the name of the package containing the stack frame location.
