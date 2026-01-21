@@ -189,43 +189,7 @@ function addframes!(sffilter::SF, alloc_node) where SF
     foreach(sf -> Node(sf, alloc_node), @view a.stacktrace[i:j-1])
 end
 
-if VERSION >= v"1.13-"
-    lastcmd() = Base.active_repl.mistate.current_mode.hist.history[end].content
-else
-    lastcmd() = Base.active_repl.mistate.current_mode.hist.history[end]
-end
-
-function allocs_menu(sffilter::SF, res::AllocResults = Allocs.fetch();
-    pagesize::Int = begin
-        height, _ = displaysize(stdout)
-        cmdlines = isinteractive() ? countlines(IOBuffer(lastcmd())) : 0
-        max(height-cmdlines, trunc(Int, 0.75*height))
-    end) where SF
-
-    function keypress(menu::TreeMenu, i::UInt32)
-        setcurrent!(menu, menu.cursoridx)
-        node = menu.current
-        data = node.data
-        if i == Int('e')
-            if data isa Alloc
-                data = node.parent.data::Tuple{Source,Int,Int}
-            end
-            if data isa Tuple{Source, Int, Int}
-                data = first(data)
-            end
-            @assert data isa Union{Source, StackFrame}
-            data.line > 0 && edit(fullpath(data.file), data.line)
-        elseif i == Int('f') && data isa Alloc
-            addframes!(sffilter, node)
-        elseif i == Int('r') && data isa Alloc
-            addframes!(framefilter(nothing), node)
-        elseif i == Int('R') && data isa Alloc
-            addframes!(Returns(true), node)
-        end
-        menu.pagesize = min(menu.maxsize, count_open_leaves(menu.root))
-        false
-    end
-
+function allocs_tree(sffilter::SF, res::AllocResults) where SF
     allocs = res.allocs
     agroups = Dict{Source,Vector{Alloc}}()
     sc = sb = 0
@@ -265,6 +229,47 @@ function allocs_menu(sffilter::SF, res::AllocResults = Allocs.fetch();
         header *= styled" {shadow:(ignoring $sc allocs: $sb bytes)}"
     end
     root.data = Colored(header)
+    root
+end
+
+if VERSION >= v"1.13-"
+    lastcmd() = Base.active_repl.mistate.current_mode.hist.history[end].content
+else
+    lastcmd() = Base.active_repl.mistate.current_mode.hist.history[end]
+end
+
+function allocs_menu(sffilter::SF, res::AllocResults = Allocs.fetch();
+    pagesize::Int = begin
+        height, _ = displaysize(stdout)
+        cmdlines = isinteractive() ? countlines(IOBuffer(lastcmd())) : 0
+        max(height-cmdlines, trunc(Int, 0.75*height))
+    end) where SF
+
+    function keypress(menu::TreeMenu, i::UInt32)
+        setcurrent!(menu, menu.cursoridx)
+        node = menu.current
+        data = node.data
+        if i == Int('e')
+            if data isa Alloc
+                data = node.parent.data::Tuple{Source,Int,Int}
+            end
+            if data isa Tuple{Source, Int, Int}
+                data = first(data)
+            end
+            @assert data isa Union{Source, StackFrame}
+            data.line > 0 && edit(fullpath(data.file), data.line)
+        elseif i == Int('f') && data isa Alloc
+            addframes!(sffilter, node)
+        elseif i == Int('r') && data isa Alloc
+            addframes!(framefilter(nothing), node)
+        elseif i == Int('R') && data isa Alloc
+            addframes!(Returns(true), node)
+        end
+        menu.pagesize = min(menu.maxsize, count_open_leaves(menu.root))
+        false
+    end
+
+    root = allocs_tree(sffilter, res)
     TreeMenu(root; pagesize, dynamic = true, keypress)
 end
 
