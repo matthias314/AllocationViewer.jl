@@ -1,9 +1,8 @@
 using Test
 
 using AllocationViewer
-using FoldingTrees: TreeMenu, nodes, unfold!
+using Base.Filesystem: mktemp
 using Profile: Allocs, slash
-using REPL.TerminalMenus: printmenu
 
 @testset "filter" begin
     @test (@framefilter "@Test" && :iterate && !32) isa Function
@@ -17,19 +16,17 @@ end
     @test AllocationViewer.relpath(file) == slash * joinpath("src", "AllocationViewer.jl")
 end
 
-@testset "allocs_menu" begin
-    f() = [rand(k) for k in 1:3]
-    f()
-    Allocs.@profile sample_rate = 1.0 f()
-    Allocs.clear()
-    Allocs.@profile sample_rate = 1.0 f()
-    sf = Returns(true)
-
-    root = AllocationViewer.allocs_tree(sf, Allocs.fetch())
-    foreach(unfold!, nodes(root))
-    menu = TreeMenu(root; pagesize = 100)
-    @test printmenu(IOBuffer(), menu, 2; init = true) isa Int
-
-    menu = AllocationViewer.allocs_menu(sf; pagesize = 10)
-    @test menu isa TreeMenu
+@testset "@track_allocs" begin
+    down = "\e[B"
+    mktemp() do _, io
+        print(io, " $(down) rRfq")
+        seek(io, 0)
+        @test nothing === redirect_stdio(stdin = io, stdout = devnull) do
+            @track_allocs pagesize = 100 [rand(k) for k in 1:3] !Memory
+        end
+        seek(io, 0)
+        @test nothing === redirect_stdio(stdin = io, stdout = devnull) do
+            @track_allocs sample_rate = 0.5 [rand(k) for k in 1:3]
+        end
+    end
 end
