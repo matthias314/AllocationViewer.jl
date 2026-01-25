@@ -1,13 +1,14 @@
 # AllocationViewer.jl
 
-The aim of this package is to provide a way to examine allocation profiles in Julia
+This package provides a way to examine allocation profiles in Julia
 that is more user-friendly than the built-in function
 [`Profile.Allocs.print`](https://docs.julialang.org/en/v1/stdlib/Profile/#Profile.Allocs.print),
-but at the same time much more lightweight than the graphical solutions
+but at the same time more lightweight than the graphical solutions
 [ProfileCanvas.jl](https://github.com/pfitzseb/ProfileCanvas.jl)
 and
-[PProf.jl](https://github.com/JuliaPerf/PProf.jl),
-which install more than 100 MB (ProfileCanvas.jl) or 300 MB (PProf.jl) of software.
+[PProf.jl](https://github.com/JuliaPerf/PProf.jl).
+The installed size of AllocationViewer.jl is 1.3 MB (source plus compiled code, excluding
+standard library packages), compared to 12 MB for ProfileCanvas.jl (v0.1.7) and 260 MB for PProf.jl (v3.2.0).
 
 Allocations can be filtered by type and size as well as source location (package, file and line number)
 and function name of a stack frame. They are displayed in collapsible menus (provided by
@@ -58,3 +59,4 @@ julia> @track_allocs sum(permutations(1:3)) "@Combinatorics" && :iterate && !Mem
    +   32 bytes for Vector{Int64}
    +  12 allocs: 384 bytes at @Combinatorics/src/permutations.jl:287 iterate
 ```
+The menu actually uses colors to help distinguish the various packages and types more easily.
