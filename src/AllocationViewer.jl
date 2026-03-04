@@ -181,7 +181,9 @@ function addframes!(sffilter::SF, alloc_node) where SF
     empty!(alloc_node.children)
     i = findfirst(Fix1(sffilter, a), a.stacktrace)::Int
     j = if sffilter != Returns(true)
-        findnext(Fix1(bottomfilter, a), a.stacktrace, i)::Int
+        jj = findnext(Fix1(bottomfilter, a), a.stacktrace, i)
+        # ccalls in the call stack may give `nothing`
+        jj === nothing ? length(a.stacktrace)+1 : jj
     else
         length(a.stacktrace)+1
     end
